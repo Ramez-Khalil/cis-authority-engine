@@ -1,0 +1,91 @@
+# Daily News Collection Workflow
+# CIS Authority Engine — GitHub Actions Automation
+#
+# PURPOSE:
+# This workflow is designed to run daily and collect relevant cybersecurity
+# and business technology news headlines, storing them in the /news/raw/ folder
+# for manual analysis and content generation.
+#
+# CURRENT STATUS: Documentation scaffold — activation requires configuration
+# See scripts/collect_news.py for the news collection script
+# See workflows/daily_content_pipeline.md for the full manual workflow
+#
+# ACTIVATION REQUIREMENTS:
+# 1. Set up a NEWS_API_KEY secret in repository Settings > Secrets and variables > Actions
+#    Get a free API key at newsapi.org
+# 2. Uncomment the scheduled trigger below
+# 3. Configure the news sources in scripts/collect_news.py
+# 4. Test manually using the workflow_dispatch trigger first
+#
+# IMPORTANT: This workflow only COLLECTS headlines and saves to /news/raw/
+# All news analysis, content generation, and publishing remain MANUAL steps
+# Automated publishing to LinkedIn is intentionally NOT included
+# Content quality requires human judgment at every generation step
+
+name: Daily News Collection
+
+on:
+  # Manual trigger for testing
+  workflow_dispatch:
+  # Scheduled trigger — uncomment after configuration and testing
+  # schedule:
+  #   - cron: '0 12 * * 1-5'  # 7:00 AM EST Monday through Friday
+
+jobs:
+  collect-news:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          pip install requests python-dateutil
+          
+      - name: Run news collection script
+        env:
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+        run: |
+          python scripts/collect_news.py
+          
+      - name: Check for new news files
+        id: check-files
+        run: |
+          if git diff --quiet HEAD -- news/raw/; then
+            echo "no_new_files=true" >> $GITHUB_OUTPUT
+          else
+            echo "no_new_files=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Commit new news files
+        if: steps.check-files.outputs.no_new_files == 'false'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "CIS Authority Engine Bot"
+          git add news/raw/
+          git commit -m "Auto-collect: Daily news headlines $(date +%Y-%m-%d)"
+          git push
+          
+      - name: No new files notification
+        if: steps.check-files.outputs.no_new_files == 'true'
+        run: echo "No new news files to commit today."
+
+# WORKFLOW NOTES:
+# After this workflow runs, follow the manual steps in workflows/daily_content_pipeline.md:
+# 1. Review collected headlines in /news/raw/
+# 2. Run news_analysis.md prompt for selected items
+# 3. Save processed analysis to /news/processed/
+# 4. Run daily_post_generation.md prompt
+# 5. Review and refine generated post
+# 6. Build Canva infographic using generated instructions
+# 7. Publish manually to LinkedIn
+# 8. Track engagement in /analytics/engagement_tracking.md
