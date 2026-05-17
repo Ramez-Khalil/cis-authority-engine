@@ -1,0 +1,3 @@
+# Raw news items are stored here before processing.
+# Files follow naming convention: YYYY-MM-DD-source-slug.md
+# Process all raw news through prompts/news_analysis.md before use.
