@@ -1,0 +1,3 @@
+# Processed news analyses are stored here after running through prompts/news_analysis.md
+# Files follow naming convention: YYYY-MM-DD-topic-slug.md
+# Only processed and verified news items should be used for LinkedIn post generation.
